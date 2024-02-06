@@ -1,5 +1,4 @@
-import time, re
-import subprocess, sys, requests
+import subprocess, sys, requests, re
 from termcolor import colored as cl
 from pyfiglet import figlet_format as ff
 
