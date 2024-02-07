@@ -2,15 +2,26 @@ import subprocess, sys, requests, re
 from termcolor import colored as cl
 from pyfiglet import figlet_format as ff
 
-try:
-    subprocess.call('cls', shell=True)
-except:
-    subprocess.call('clear', shell=True)
+def getversion(d):
+    d = d.split('\n')
+    ind = 0
+    for i in range(len(d)):
+        if 'PORT' in d[i]:
+            ind = i
+    return '\n'.join(d[ind:])
 
-print(cl('='*40, 'red'))
-print(cl(ff('NetScan'), 'red'))
-print(cl('\t\t-Powered by Nmap\n\t\t-An AYLIT production\n\t\t-v1.0', 'red'))
-print(cl('='*40, 'red'), '\n')
+def get_ports_open(d):
+    dsplit = d.split('\n')
+    ind = 0
+    for i in range(len(dsplit)):
+        if 'PORT' in dsplit[i]:
+            ind = i
+    dsplit = dsplit[ind+1:-2]
+    ports_open = []
+    for i in dsplit:
+        if 'open' in i or 'PORT' in i:
+            ports_open.append(i)
+    return ports_open
 
 def get_ips(d):
     d = d.split('\n')
@@ -54,12 +65,15 @@ def check_tool():
             sys.exit()
 
 check_tool()
+subprocess.call('clear', shell=True)
 
-print(cl('Commands available:\n   ->getversion(To get the version of software run by the IP)\n   ->getcommands(To get a list of commands which can be used for running a Nmap scan)\n   ->trace(To trace the transfer of packets)\n   ->quit(To quit the program)', 'red'))
-
-print('-'*20)
-
-while True:
+while True: 
+    print(cl('='*40, 'red'))
+    print(cl(ff('NetScan'), 'red'))
+    print(cl('\t\t-Powered by Nmap\n\t\t-An AYLIT production\n\t\t-v1.0', 'red'))
+    print(cl('='*40, 'red'), '\n')
+    print(cl('Commands available:\n   ->getversion(To get the version of software run by the IP)\n   ->getcommands(To get a list of commands which can be used for running a Nmap scan)\n   ->trace(To trace the transfer of packets)\n   ->getportsopen(To get a list of ports open in a host)\n   ->quit(To quit the program)', 'red'))
+    print('-'*20)
     cmd = input(cl('Enter the command:', 'yellow')).lower().strip()
     if cmd == 'quit':
         sys.exit()
@@ -72,12 +86,13 @@ while True:
     if cmd == 'getversion':
         ctr = f'nmap -sV {addr}'
         print(cl(f'Command to be run: {ctr}', 'red'))
-        subprocess.call(ctr, shell=True)
+        data = subprocess.check_output(ctr.split(' ')).decode()
+        print(cl(getversion(data), 'blue'))
         print('-'*20)
     elif cmd == 'trace':
         ctr = f'nmap --traceroute {addr}'
         print(cl(f'Command to be run: {ctr}', 'red'))
-        term_data = subprocess.check_output(['nmap', '--traceroute', addr]).decode()
+        term_data = subprocess.check_output(ctr.split(' ')).decode()
         ips = get_ips(term_data)
         ips_info = get_ip_info(ips)
         print('-'*10)
@@ -88,7 +103,23 @@ while True:
             print('-'*10)
             print(cl('Consolidated output:\n', 'red'))
             for i in ips_info:
-                print('-'*20)
+                print('-'*10)
+                print(cl(f'IP:{i}', 'blue'))
                 print(cl(f'Organisation:{ips_info[i][0]}\nCity:{ips_info[i][1]}\nCountry:{ips_info[i][-1]}', 'blue'))
                 print('-'*10)
         print('-'*20)
+    elif cmd == 'getportsopen':
+        ctr = f'nmap {addr}'
+        print(cl(f'Command to be run: {ctr}', 'red'))
+        term_data = subprocess.check_output(ctr.split(' ')).decode()
+        get_open_ports = get_ports_open(term_data)
+        print(cl('Ports open:\n'+'-'*10, 'blue'))
+        for i in get_open_ports:
+            print(cl(i, 'blue'))
+        print('-'*20)
+    else:
+        print(cl('Wrong option', 'red'))
+        print('-'*20)
+    press = input(cl('Press enter to clear screen', 'red'))
+    if press == '':
+        subprocess.call('clear', shell=True)
