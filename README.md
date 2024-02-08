@@ -1,2 +1,2 @@
 # NetScan
-A simple scanner program powered by Nmap module.
+A simple scanner program powered by Nmap.
