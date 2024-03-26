@@ -1,6 +1,14 @@
+import scapy.all as scapy
 from termcolor import colored as cl
 from pyfiglet import figlet_format as ff
-import subprocess, sys, requests, re, time
+import subprocess, sys, requests, re, time, os
+
+def check_if_root():
+    if os.getuid() == 0:
+        pass
+    else:
+        print(cl('You must be root in order to run this program', 'red'))
+        sys.exit()
 
 def scan_ports(prts, addr):
     ports = ",".join(prts)
@@ -49,18 +57,18 @@ def get_ips(d):
     ips = []
     for i in d:
         search_result = re.search('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', i)
-        if search_result  != None:
+        if search_result != None:
             ips.append(search_result.group())
     return ips
 
 def get_ip_info(d):
-    url = 'https://ipapi.co/'
+    url = 'http://ip-api.com'   
     infos = {}
     for i in d:
-        req_url = url+i+'/'+'json/'
+        req_url = url+'/'+'json/'+i
         req_data = requests.get(req_url).json()
         try:
-            infos[i] = [req_data['org'], req_data['city'], req_data['country']]
+            infos[i] = (req_data['isp'], req_data['city'], req_data['country'])
         except:
             pass
     return infos
@@ -77,17 +85,20 @@ def check_tool():
             print('-'*10)
             print(cl('[+] Successfully installed.', 'green'))
             print('-'*20)
+            subprocess.call('clear', shell=True)
         else:
             print(cl('Cannot run the program without Nmap, sorry.', 'red'))
             sys.exit()
 
+check_if_root()
 check_tool()
+
 subprocess.call('clear', shell=True)
 
-commands = {'getversion': 'To get the version of software run by the IP', 'getcommands': 'To get a list of commands which can be used for running a Nmap scan', 'trace': 'To trace the transfer of packets', 'getportsopen': 'To get a list of ports open in a host', 'getosversion': 'To predict the OS run by the IP', 
-        'stealthscan': 'Stealth Scan makes it difficult for the host to determine the scan', 'portsscan': 'To scan a list of ports of a host', 'quit': 'To quit the program'}
+commands = {'getversion': 'To get the version of software run by the IP', 'getcommands': 'To get a list of commands which can be used for running a Nmap scan', 'trace': 'To trace the transfer of packets', 'getportsopen': 'To get a list of ports open in a host', 'getosversion': 'To predict the OS run by the IP',
+            'stealthscan': 'Stealth Scan makes it difficult for the host to know about the scan', 'portsscan': 'To scan a list of ports of a host', 'hostdiscover': 'To discover hosts in a subnet',  'quit': 'To quit the program'}
 
-while True: 
+while True:
     print(cl('='*40, 'red'))
     print(cl(ff('NetScan'), 'red'))
     print(cl('\t\t-Powered by Nmap\n\t\t-An AYLIT production\n\t\t-v1.0', 'red'))
@@ -103,10 +114,31 @@ while True:
         print(cl(data.decode(), 'blue'))
     elif cmd == 'getcommands':
         data = subprocess.check_output(['nmap', '-h'])
+        print('-'*20)
         print(cl(data.decode(), 'blue'))
     elif cmd == 'getversion':
         data = subprocess.check_output(['nmap', '--version'])
         print(cl(getversion(data), 'blue'))
+        print('-'*20)
+    elif cmd == 'hostdiscover':
+        print('-'*10)
+        print(cl("Fetching your router address using the 'route' command.", 'green'))
+        print('-'*10)
+        route_data = subprocess.check_output('route'.split()).decode().split('\n')
+        router_ip = route_data[2].split()[1]
+        ip_for_arp = ".".join(router_ip.split('.')[:-1])+'.0/24'
+        arp_class = scapy.ARP(pdst=ip_for_arp)
+        broadcast = scapy.Ether(dst='ff:ff:ff:ff:ff:ff')
+        broadcast_arp_request = broadcast/arp_class
+        ans = scapy.srp(broadcast_arp_request, timeout=1, verbose=False)[0]
+        ips = 0
+        for i in ans:
+            ips += 1
+        print(cl(f'Hosts found: {str(ips)}', 'blue'))
+        print(cl('    IP\t\t\t\tMAC', 'blue'))
+        for i in ans:
+            print(cl(i[1].psrc+'\t\t\t'+i[1].hwsrc, 'blue'))
+        print('-'*20)
     else:
         addr = input(cl('Enter address:', 'yellow'))
         if cmd == 'trace':
@@ -116,19 +148,19 @@ while True:
             print('-'*10)
             print(cl('[+] Scan ran successfully', 'green'))
             print('-'*10)
-            ips = get_ips(term_data)
-            ips_info = get_ip_info(ips)
             raw_opt = input(cl('See raw output(y/n)? ', 'red')).lower().strip()
             if raw_opt == 'y':
                 print('-'*10)
-                print(cl(term_data.decode(), 'blue'))
+                print(cl(term_data, 'blue'))
             else:
+                ips = get_ips(term_data)
+                ip_infos = get_ip_info(ips)
                 print('-'*10)
                 print(cl('Consolidated output:\n', 'red'))
-                for i in ips_info:
+                for i in ip_infos:
                     print('-'*10)
                     print(cl(f'IP:{i}', 'blue'))
-                    print(cl(f'Organisation:{ips_info[i][0]}\nCity:{ips_info[i][1]}\nCountry:{ips_info[i][-1]}', 'blue'))
+                    print(cl(f'ISP:{ip_infos[i][0]}\nCity:{ip_infos[i][1]}\nCountry:{ip_infos[i][-1]}', 'blue'))
                     print('-'*10)
             print('-'*20)
         elif cmd == 'getportsopen':
