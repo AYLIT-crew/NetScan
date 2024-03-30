@@ -121,12 +121,20 @@ while True:
         print(cl(getversion(data), 'blue'))
         print('-'*20)
     elif cmd == 'hostdiscover':
+        opt = input(cl('Use router IP address(Y/N)? ', 'yellow'))
+        if opt == 'Y':
+            print('-'*10)
+            print(cl("Fetching your router address using the 'route' command.", 'green'))
+            print('-'*10)
+            route_data = subprocess.check_output('route'.split()).decode().split('\n')
+            router_ip = route_data[2].split()[1]
+            ip_for_arp = ".".join(router_ip.split('.')[:-1])+'.0/24'
+        else:
+            ip_for_arp = input(cl('Enter any IP address of the subnet:', 'yellow'))
+            ip_for_arp = ".".join(ip_for_arp.split('.')[:-1])+'0/24'
         print('-'*10)
-        print(cl("Fetching your router address using the 'route' command.", 'green'))
+        print(cl('Will take some time to complete the scanning... pls be paitent till then', 'green'))
         print('-'*10)
-        route_data = subprocess.check_output('route'.split()).decode().split('\n')
-        router_ip = route_data[2].split()[1]
-        ip_for_arp = ".".join(router_ip.split('.')[:-1])+'.0/24'
         arp_class = scapy.ARP(pdst=ip_for_arp)
         broadcast = scapy.Ether(dst='ff:ff:ff:ff:ff:ff')
         broadcast_arp_request = broadcast/arp_class
@@ -135,9 +143,22 @@ while True:
         for i in ans:
             ips += 1
         print(cl(f'Hosts found: {str(ips)}', 'blue'))
-        print(cl('    IP\t\t\t\tMAC', 'blue'))
+        print(cl('    IP\t\t\t\tMAC\t\t\t\tOS(guess)', 'blue'))
+        ips, macs, oss = [], [], []
         for i in ans:
-            print(cl(i[1].psrc+'\t\t\t'+i[1].hwsrc, 'blue'))
+            ips.append(i[1].psrc)
+            macs.append(i[1].hwsrc)
+        for i in ips:
+            cmd = f'nmap -O {i}'
+            data = subprocess.check_output(cmd.split()).decode().split('\n')
+            ind = 0
+            for i in range(len(data)):
+                if 'Aggressive' in data[i]:
+                    ind = i
+                    break
+            oss.append(data[ind:-1][0].split(':')[-1].strip().split(',')[0][:-6])
+        for i in range(len(ips)):
+            print(ips[i]+'\t\t\t'+macs[i]+'\t'+oss[i])
         print('-'*20)
     else:
         addr = input(cl('Enter address:', 'yellow'))
@@ -206,10 +227,10 @@ while True:
                 ports = list(map(str, input(cl('Enter the ports(eg:- 22 35 45):', 'yellow')).split(' ')))
                 print(cl("\n".join(scan_ports(ports, addr)), 'blue'))
             else:
-                rnge = list(map(str, input(cl('Enter the starting range and ending range(eg:- 22 443)', 'yellow')).split(' ')))
-                vals = []
+                rnge = list(map(str, input(cl('Enter the starting range and ending range(eg:- 22 443):', 'yellow')).split(' ')))
+                ports = []
                 for i in range(int(rnge[0]), int(rnge[-1])+1):
-                    vals.append(str(i))
+                    ports.append(str(i))
                 print(cl("\n".join(scan_ports(ports, addr)), 'blue'))
             print('-'*20)
         else:
@@ -217,4 +238,6 @@ while True:
             print('-'*20)
     press = input(cl('Press enter to clear screen', 'red'))
     if press == '':
+        subprocess.call('clear', shell=True)
+    else:
         subprocess.call('clear', shell=True)
