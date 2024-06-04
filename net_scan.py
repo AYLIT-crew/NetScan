@@ -145,7 +145,10 @@ commands = {'getversion': 'To get the version of software run by the IP', 'getco
 options = []
 cnt = 1
 for i in commands:
-    options.append(f'[{cnt}]'+i+'('+commands[i]+')')
+    if cnt != 8:
+        options.append(f'[{cnt}]'+i+'('+commands[i]+')')
+    else:
+        options.append(f'[-]'+i+'('+commands[i]+')')
     cnt += 1
 
 while True:
