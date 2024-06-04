@@ -60,7 +60,10 @@ def getosversion(d):
         if 'Aggressive' in d[i]:
             ind = i
             break
-    return d[ind]
+    if ind != 0:
+        return d[ind]
+    else:
+        return "No OS match found."
 
 def getversion(d):
     d = d.decode().split('\n')
